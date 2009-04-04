@@ -1,0 +1,39 @@
+  v0.50
+    -> Misc changes:
+        - Switched to relative paths for MAN pages. We let yelp figure
+          where the page file is on the filesystem. This simplifies the
+          code and closes down the problem with displaying pages from
+          the (1posix) section
+
+  v0.32
+    -> Misc changes:
+        - v0.31 code for cooperation with plain man did not work :(
+          switched to alternative implementation
+  v0.31
+    -> New features:
+          Now supports both man-db and plain man document systems
+    -> Misc changes:
+        - Replaced all `` command substitutions with new $() notation
+        - Added $WINDOW_HEIGHT to control the size of the window (for
+          now only used in multiple results list)
+
+  v0.3
+    -> New features:
+        - Ask before doing a substring search
+        - If a result is not found, loop back to initial dialog and
+          ask for another page
+
+  v0.2
+    -> New features:
+        - If no match is found, do a substring search
+        - Skip the text entry dialog if a name is provided on the
+          command line (ex. gman rsync)
+    -> Fixed bugs:
+        - In popup window with list of multiple hits, exit gracefully
+          when pressing CANCEL, or OK without selecting an item first.
+    -> Misc changes:
+        - Added list of known bugs
+
+  v0.1a
+    - Initial release of G-Man
+

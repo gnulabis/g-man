@@ -1,0 +1,10 @@
+- Write README file
+
+- Support user preferences, saved in home folder
+
+- Tab completion in command line entry of page name (ex. gman rsync)
+
+- Field completion for text entry dialog (impossible with zenity?)
+
+- Hunt down bugs...
+

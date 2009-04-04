@@ -1,0 +1,164 @@
+#!/bin/bash
+# G-Man: A simple tool for quick & easy access to MAN pages in GNOME
+#
+# This tool is a graphical frontend which uses Zenity and basic command
+# line tools to locate a MAN page in the local filesystem and display it
+# with Yelp (the GNOME Help Center).
+#
+# Author: Dimitris Lampridis <dlampridis_at_gmail.com>
+
+# (C) Copyright 2009 Dimitris Lampridis
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+# To begin with, set the app title and version
+TITLE="G-Man"
+VERSION="0.50"
+
+# Set window title and window width
+WINDOW_TITLE=$TITLE" (v"$VERSION")"
+WINDOW_WIDTH=400
+WINDOW_HEIGHT=250
+
+# Paths to needed executables. Please adjust as necessary
+ZENITY=/usr/bin/zenity
+AWK=/usr/bin/awk
+YELP=/usr/bin/yelp
+WHATIS=/usr/bin/whatis
+
+# Check if Zenity can be found. If not, produce error message
+# (with "xmessage", since zenity is not available) and bail out
+if [ ! -e "$ZENITY" ]; then
+    xmessage "ERROR: $ZENITY not found. You must install the Zenity\
+ package, or provide an alternative location"
+    exit
+fi
+
+# Check if Whatis can be found. If not, produce error message and bail out
+if [ ! -e "$WHATIS" ]; then
+    $ZENITY --warning --text="ERROR: $WHATIS not found. You must install the \
+    man-db package, or provide an alternative location" --title="$WINDOW_TITLE"
+    exit
+else
+    # Look whether $WHATIS is actually a script (man vs man-db) and flag it so
+    file $WHATIS | grep -qi "shell script"
+    if [ $? -eq 0 ]; then ISBINARY=0; else ISBINARY=1; fi;
+fi
+
+# Check if Awk can be found. If not, produce error message and bail out
+if [ ! -e "$AWK" ]; then
+    $ZENITY --warning --text="ERROR: $AWK not found. You must install the \
+Awk package, or provide an alternative location" --title="$WINDOW_TITLE"
+    exit
+fi
+
+# Check if Yelp can be found. If not, produce error message and bail out
+if [ ! -e "$YELP" ]; then
+    $ZENITY --warning --text="ERROR: $YELP not found. You must install the \
+Yelp package, or provide an alternative location" --title="$WINDOW_TITLE"
+    exit
+fi
+
+# Loop until a candidate page is found, or user cancels
+CLI=0
+PAGEFOUND=0
+while [ $PAGEFOUND -eq 0 ]; do
+
+    # Check if user has provided a name as a command-line argument. If not,
+    # create a text entry dialog. In any case, save user input as $ENTRY.
+    if [ $# -gt 0 ] && [ $CLI -eq 0 ]; then
+        ENTRY=$1
+        CLI=1
+    else
+        ENTRY=$($ZENITY --width $WINDOW_WIDTH --entry --title="$WINDOW_TITLE" \
+            --text="Please enter a MAN page:")
+           
+    fi
+
+    # If user aborts, zenity returns nothing, and $ENTRY will be zero length,
+    # so bail out
+    if [ -z "$ENTRY" ] ; then
+        exit
+    fi
+
+    # Check if there is any page at all
+    PAGECHECK=$($WHATIS $ENTRY | grep -v "nothing appropriate")
+    if [ -z "$PAGECHECK" ]; then
+        # Check whether we are running whatis from man or man-db.
+        # (Man cannot perform a substring search)
+        if [ $ISBINARY -eq 1 ]; then
+            # Ask user whether to do a substring search
+            $ZENITY --question --title="$WINDOW_TITLE" \
+                --text="No exact hit found. Would you like a substring search?"
+            if [ $? -eq 0 ]; then
+                # Redefine $WHATIS to treat $ENTRY as a regular
+                # expression and try again
+                WHATIS="$WHATIS -r"
+                REGEXPCHECK=$($WHATIS $ENTRY | grep -v "nothing appropriate")
+                # Nothing found...
+                if [ -z "$REGEXPCHECK" ]; then
+                    $ZENITY --warning --text="Page \"$ENTRY\" not found" \
+                        --title="$WINDOW_TITLE"
+                else
+                    PAGEFOUND=1
+                fi
+            fi
+        else
+            $ZENITY --warning --text="Page \"$ENTRY\" not found" \
+                --title="$WINDOW_TITLE"
+        fi
+    else
+        PAGEFOUND=1
+    fi
+done
+
+# Count number of results (output lines of "whatis")
+LINECOUNT=$($WHATIS $ENTRY | wc -l)
+
+# If more than one line are returned, create a list window with zenity and
+# save selection in $SELECTION
+if [ $LINECOUNT -gt 1 ]; then
+    LISTMESSAGE="Multiple pages found. Please select one:"
+    SELECTION=$($WHATIS $ENTRY | \
+        awk  'BEGIN {FS="[ \t]+-[ \t]+"} {printf "%s\n%s\n", $1, $2}' | \
+        $ZENITY --width $WINDOW_WIDTH --height $WINDOW_HEIGHT \
+        --list --text="$LISTMESSAGE" --title="$WINDOW_TITLE" \
+        --column=Name/Section --column=Description)
+
+    # If user presses OK in the previous dialog without selecting
+    # an item from the list (or just presses Cancel), Zenity returns
+    # an empty string. Bail out (again)
+    if [ -z "$SELECTION" ]; then
+        exit
+    fi
+
+# If only one result exists, then $SELECTION defaults to that
+# result and no list window appears
+else
+    SELECTION=$($WHATIS $ENTRY)
+fi
+
+# Finally, use awk to get all the relevant fields of the selected result
+# First, we get the page name (first field of $SELECTION)
+NAME=$(echo $SELECTION | $AWK '{print $1}')
+
+# Then we get the section name (last field of $SELECTION)
+SECTION=$(echo $SELECTION | $AWK '{print $NF}')
+
+# Build the path to the man page by recombining the extracted fields
+MAN_PATH="man:"$NAME$SECTION
+       
+# Finally, call yelp (in the background) and exit script
+$YELP $MAN_PATH &
