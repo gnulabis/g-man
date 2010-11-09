@@ -25,7 +25,7 @@
 
 # To begin with, set the app title and version
 TITLE="G-Man"
-VERSION="0.50"
+VERSION="0.51"
 
 # Set window title and window width
 WINDOW_TITLE=$TITLE" (v"$VERSION")"
@@ -154,11 +154,11 @@ fi
 # First, we get the page name (first field of $SELECTION)
 NAME=$(echo $SELECTION | $AWK '{print $1}')
 
-# Then we get the section name (last field of $SELECTION)
-SECTION=$(echo $SELECTION | $AWK '{print $NF}')
+# Then we get the section name (second field of $SELECTION)
+SECTION=$(echo $SELECTION | $AWK '{print $2}')
 
 # Build the path to the man page by recombining the extracted fields
 MAN_PATH="man:"$NAME$SECTION
        
 # Finally, call yelp (in the background) and exit script
-$YELP $MAN_PATH &
+$YELP "$MAN_PATH" &
