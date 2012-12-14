@@ -1,3 +1,8 @@
+  v0.60
+    -> New features:
+          Does not use Yelp anymore, takes advantage of built-in man
+	  capability to render man pages in HTML
+
   v0.50
     -> Misc changes:
         - Switched to relative paths for MAN pages. We let yelp figure

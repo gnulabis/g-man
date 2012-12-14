@@ -25,7 +25,7 @@
 
 # To begin with, set the app title and version
 TITLE="G-Man"
-VERSION="0.51"
+VERSION="0.60"
 
 # Set window title and window width
 WINDOW_TITLE=$TITLE" (v"$VERSION")"
@@ -35,8 +35,9 @@ WINDOW_HEIGHT=250
 # Paths to needed executables. Please adjust as necessary
 ZENITY=/usr/bin/zenity
 AWK=/usr/bin/awk
-YELP=/usr/bin/yelp
+SED=/bin/sed
 WHATIS=/usr/bin/whatis
+MAN=/usr/bin/man
 
 # Check if Zenity can be found. If not, produce error message
 # (with "xmessage", since zenity is not available) and bail out
@@ -64,11 +65,18 @@ Awk package, or provide an alternative location" --title="$WINDOW_TITLE"
     exit
 fi
 
-# Check if Yelp can be found. If not, produce error message and bail out
-if [ ! -e "$YELP" ]; then
-    $ZENITY --warning --text="ERROR: $YELP not found. You must install the \
-Yelp package, or provide an alternative location" --title="$WINDOW_TITLE"
+# Check if Sed can be found. If not, produce error message and bail out
+if [ ! -e "$SED" ]; then
+    $ZENITY --warning --text="ERROR: $SED not found. You must install the \
+Sed package, or provide an alternative location" --title="$WINDOW_TITLE"
     exit
+fi
+
+# Check if BROWSER is defined, else revert to default X sys browser
+if [ -z $BROWSER ]; then
+	if [ -e "/usr/bin/x-www-browser" ]; then
+		XBROWSER=/usr/bin/x-www-browser
+	fi
 fi
 
 # Loop until a candidate page is found, or user cancels
@@ -155,10 +163,11 @@ fi
 NAME=$(echo $SELECTION | $AWK '{print $1}')
 
 # Then we get the section name (second field of $SELECTION)
-SECTION=$(echo $SELECTION | $AWK '{print $2}')
+SECTION=$(echo $SELECTION | $AWK '{print $2}' | $SED 's/[()]//g')
 
-# Build the path to the man page by recombining the extracted fields
-MAN_PATH="man:"$NAME$SECTION
-       
-# Finally, call yelp (in the background) and exit script
-$YELP "$MAN_PATH" &
+# Finally, call man and exit script
+if [ -z $XBROWSER ]; then
+	$MAN -H $SECTION $NAME
+else
+	$MAN --html=$XBROWSER $SECTION $NAME
+fi
